@@ -69,6 +69,13 @@ resources:
                     - "logs:CreateLogStream"
                     - "logs:PutLogEvents"
                   Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "secretsmanager:GetRandomPassword"
+                    - "secretsmanager:PutSecretValue"
+                    - "secretsmanager:GetSecretValue"
+                    - "secretsmanager:CreateSecret"
+                  Resource: { "Ref": "KafkaBrokerSaslScram256Secrets" }
             PolicyName:
               { "Fn::Join": ["-", [{ "Ref": "AWS::StackName" }, "KafkaAccessPolicy"]] }
     KafkaEventSource:
