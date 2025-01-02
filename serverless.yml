@@ -1,0 +1,90 @@
+service: lambda-apache-kafka-kraft-event-source-mapping
+
+frameworkVersion: "3"
+configValidationMode: error
+
+provider:
+  name: aws
+  architecture: arm64
+  region: ${env:AWS_REGION}
+  stage: "dev"
+  environment: 
+      KAFKA_BOOTSTRAP_SERVER: ${env:KAFKA_BOOTSTRAP_SERVER}
+      KAFKA_REQUEST_TOPIC: ${env:KAFKA_REQUEST_TOPIC}
+      KAFKA_REQUEST_CONSUMER_GROUP_ID: ${env:KAFKA_REQUEST_CONSUMER_GROUP_ID}
+      KAFKA_BROKER_SASL_SCRAM_USERNAME: ${env:KAFKA_BROKER_SASL_SCRAM_USERNAME}
+      KAFKA_BROKER_SASL_SCRAM_PASSWORD: ${env:KAFKA_BROKER_SASL_SCRAM_PASSWORD}
+functions:
+  KafkaConsumer:
+    handler: bootstrap
+    runtime: provided.al2
+    package:
+      artifact: build/lambda.zip
+      individually: true
+    role: { "Fn::GetAtt": ["KafkaConsumerLambdaRole", "Arn"] }
+    name: kafka-consumer-lambda
+    timeout: 500
+    memorySize: 1800
+
+resources:
+  Resources:
+    KafkaBrokerSaslScram256Secrets:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: KafkaBrokerSaslScram256
+        Description: "Kafka Broker Sasl Scram Sha-256"
+        SecretString:
+          {
+            "Fn::Sub":
+              [
+                '{"username":"${username}","password":"${password}"}',
+                {
+                  "username": "${env:KAFKA_BROKER_SASL_SCRAM_USERNAME}",
+                  "password": "${env:KAFKA_BROKER_SASL_SCRAM_PASSWORD}",
+                },
+              ],
+          }
+        Tags:
+          - Key: KafkaBrokerSaslScram256
+            Value: KafkaBrokerSaslScram256
+    KafkaConsumerLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - "lambda.amazonaws.com"
+              Action:
+                - "sts:AssumeRole"
+        Policies:
+          - PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "logs:CreateLogGroup"
+                    - "logs:CreateLogStream"
+                    - "logs:PutLogEvents"
+                  Resource: "*"
+            PolicyName:
+              { "Fn::Join": ["-", [{ "Ref": "AWS::StackName" }, "KafkaAccessPolicy"]] }
+    KafkaEventSource:
+      Type: AWS::Lambda::EventSourceMapping
+      Properties:
+        BatchSize: 2000
+        Enabled: true
+        Topics:
+          - ${env:KAFKA_REQUEST_TOPIC}
+        FunctionName: { "Ref": "KafkaConsumerLambdaFunction" }
+        SelfManagedEventSource:
+          Endpoints:
+            KafkaBootstrapServers:
+              - ${env:KAFKA_BOOTSTRAP_SERVER}
+        SourceAccessConfigurations:
+          - Type: SASL_SCRAM_256_AUTH
+            URI: { "Ref": "KafkaBrokerSaslScram256Secrets" }
+        SelfManagedKafkaEventSourceConfig:
+          ConsumerGroupId: ${env:KAFKA_REQUEST_CONSUMER_GROUP_ID}
