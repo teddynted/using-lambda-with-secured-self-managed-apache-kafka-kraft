@@ -1,4 +1,4 @@
-service: lambda-apache-kafka-kraft-event-source-mapping
+service: lambda-apache-kafka-event-source-mapping
 
 frameworkVersion: "3"
 configValidationMode: error
