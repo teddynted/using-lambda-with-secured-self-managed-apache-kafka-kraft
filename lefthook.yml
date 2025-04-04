@@ -3,9 +3,10 @@ pre-commit:
     lint:
       run: |
         golangci-lint --version
+#        golangci-lint run
 
 pre-push:
-  commands:
+  commands: 
     tidy:
       run: go mod tidy
     lint: 
