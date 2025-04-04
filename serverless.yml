@@ -22,7 +22,7 @@ functions:
       artifact: build/lambda.zip
       individually: true
     role: { "Fn::GetAtt": ["KafkaConsumerLambdaRole", "Arn"] }
-    name: kafka-consumer-lambda
+    name: kafka-consumer-lambda-${self:provider.stage}
     timeout: 500
     memorySize: 1800
 
