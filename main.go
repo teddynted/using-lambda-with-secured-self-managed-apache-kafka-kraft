@@ -20,6 +20,7 @@ type Record struct {
 	Value     string `json:"value"`
 }
 
+// Lambda triggered by Apache Kafka Event Source
 func handleRequest(ctx context.Context, event KafkaEvent) error {
 	log.Printf("Processing Kafka event from source: %s", event.EventSource)
 	for topic, records := range event.Records {
